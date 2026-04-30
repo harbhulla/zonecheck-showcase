@@ -49,11 +49,3 @@ Raw parcel GeoJSON for the visible viewport was tens of MB. I cut it by about 80
 
 - 100,000+ parcels searchable in the live tool
 - 435,000+ parcels in the underlying database
-
-## What I'd do differently
-
-<!-- TODO (Harsimran fills in): 2 or 3 honest items.
-     Examples:
-     - Vector tiles (PMTiles) instead of GeoJSON from day one
-     - Treat report generation as event-sourced from the start
-     - Schema migrations behind feature flags for zoning rule changes -->
