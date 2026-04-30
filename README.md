@@ -1,29 +1,20 @@
 # ZoneCheck
 
-A zoning analysis and due-diligence tool for British Columbia. Search
-across 100,000+ parcels and generate citation-backed reports from the
-underlying zoning bylaws.
+A zoning analysis and due diligence tool for British Columbia. You can search across 100,000+ parcels and get back citation-backed reports built from the underlying zoning bylaws.
 
-> The source code is private. This repo documents the architecture and
-> engineering choices.
-
----
+The source code is private. This repo is here to document how I built it.
 
 ## What it does
 
-A user enters an address or selects a parcel on the map. ZoneCheck identifies
-the parcel's zoning, intersects it with bylaw documents, and generates a
-structured report — every claim in the report carries a citation back to a
-specific bylaw page, so the output is auditable rather than hallucinated.
+You enter an address or click a parcel on the map. ZoneCheck identifies the parcel's zoning, intersects it with the relevant bylaw documents, and generates a structured report. Every claim in the report carries a citation back to a specific bylaw page, so you can actually verify what you're reading instead of taking the tool's word for it.
 
 ## Screenshots
 
-<!-- TODO: add 1–2 map screenshots (parcel + zoning overlays). -->
+<!-- TODO: 1 or 2 map screenshots showing parcel and zoning overlays -->
 
 ## Architecture
 
-<!-- TODO: Excalidraw diagram: MapLibre + deck.gl frontend → FastAPI → PostGIS
-     (parcels, zoning) + Redis queue + R2 (source documents) + report worker -->
+<!-- TODO: Excalidraw diagram. MapLibre + deck.gl frontend, FastAPI backend, PostGIS for parcels and zoning, Redis queue, Cloudflare R2 for source documents, report worker -->
 
 ## Tech stack
 
@@ -31,40 +22,28 @@ specific bylaw page, so the output is auditable rather than hallucinated.
 |-------|-------|
 | Frontend | TypeScript, MapLibre GL, deck.gl, Turf |
 | Backend | Python, FastAPI |
-| Database | PostgreSQL + PostGIS |
+| Database | PostgreSQL with PostGIS |
 | Queue / cache | Redis |
 | Object storage | Cloudflare R2 (bylaw PDFs and source docs) |
-| Background work | Worker-driven report lifecycle (pending / running / succeeded / failed) |
+| Background work | Worker-driven report lifecycle (pending, running, succeeded, failed) |
 
 ## Engineering highlights
 
 ### Citation-backed reports
 
-The report pipeline rejects any claim that isn't backed by a citation
-(document + page provenance). Extraction failures and partial data fail
-loudly into the report state machine instead of silently producing a
-half-true report. This was deliberate — for due-diligence work, "we don't
-know" is a valid and useful output; "we hallucinated this" is not.
+The report pipeline rejects any claim that isn't backed by a citation (document plus page number). If extraction fails or data is partial, the report state machine fails loudly instead of papering over it. For due diligence work I'd rather have the tool say "we don't know" than spit out a confident half-truth.
 
 ### Geospatial query path
 
-PostGIS handles parcel/zoning intersection at query time. A typical
-"what zone is this parcel in" lookup is a single spatial join against
-indexed geometries; the same index supports radius queries from the
-search box.
+PostGIS does most of the heavy lifting. A parcel-to-zoning lookup is a single spatial join against indexed geometries, and the same index handles radius queries from the search box.
 
-### Frontend bundle: 95% Turf reduction
+### Cutting the Turf bundle by 95%
 
-Naive Turf imports pulled in the entire library (~hundreds of kB). I
-switched to per-function imports (`@turf/area`, `@turf/intersect`,
-etc.) and dropped the Turf-attributable bundle by ~95%.
+The naive Turf imports were pulling in the whole library, hundreds of kB of code I wasn't using. I switched to per-function imports (`@turf/area`, `@turf/intersect`, and so on), and the Turf-attributable bundle dropped by about 95%.
 
-### Map data: 80% GeoJSON shrink
+### Shrinking GeoJSON by 80%
 
-Raw parcel GeoJSON for visible viewports was tens of MB. I reduced it
-~80% by simplifying geometries to viewport-appropriate precision,
-quantizing coordinates, and stripping unused properties before serving.
-The map stayed visually identical at zoom levels users actually use.
+Raw parcel GeoJSON for the visible viewport was tens of MB. I cut it by about 80% by simplifying geometries to viewport-appropriate precision, quantizing coordinates, and dropping unused properties before serving. At the zoom levels people actually use, the map looks the same.
 
 ### Coverage
 
@@ -73,7 +52,7 @@ The map stayed visually identical at zoom levels users actually use.
 
 ## What I'd do differently
 
-<!-- TODO (Harsimran fills in): 2–3 honest items.
+<!-- TODO (Harsimran fills in): 2 or 3 honest items.
      Examples:
      - Vector tiles (PMTiles) instead of GeoJSON from day one
      - Treat report generation as event-sourced from the start
